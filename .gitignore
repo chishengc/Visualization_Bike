@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Local data and generated visualizations
+cabi_bike.csv
+*.png
+*.html
+
+# geoplotlib tile cache
+geoplotlib_tiles/
+
+# macOS and editor files
+.DS_Store
+.vscode/
