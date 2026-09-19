@@ -59,7 +59,7 @@ def load_trips(csv_path, sample_every):
 def main():
     parser = argparse.ArgumentParser(description="Visualize CABI bike trips with geoplotlib")
     parser.add_argument("csv_path", nargs="?", type=Path, default=Path("cabi_bike.csv"))
-    parser.add_argument("--sample-every", type=int, default=100)
+    parser.add_argument("--sample-every", type=int, default=250)
     parser.add_argument("--save", type=Path, help="Save a PNG instead of opening the map window")
     args = parser.parse_args()
 
@@ -71,7 +71,7 @@ def main():
     import pyglet
     pyglet.options["debug_gl"] = False
     import geoplotlib
-    from geoplotlib.utils import DataAccessObject
+    from geoplotlib.utils import BoundingBox, DataAccessObject
 
     loaded = load_trips(args.csv_path, args.sample_every)
     density_data = DataAccessObject({
@@ -86,6 +86,22 @@ def main():
         "dest_lon": loaded["dest_lon"],
     })
 
+    all_lats = np.concatenate((loaded["lat"], loaded["src_lat"], loaded["dest_lat"]))
+    all_lons = np.concatenate((loaded["lon"], loaded["src_lon"], loaded["dest_lon"]))
+
+    lat_min, lat_max = np.percentile(all_lats, [1, 99])
+    lon_min, lon_max = np.percentile(all_lons, [1, 99])
+
+    lat_padding = max((lat_max - lat_min) * 0.08, 0.01)
+    lon_padding = max((lon_max - lon_min) * 0.08, 0.01)
+
+    geoplotlib.set_bbox(BoundingBox(
+        north=lat_max + lat_padding,
+        west=lon_min - lon_padding,
+        south=lat_min - lat_padding,
+        east=lon_max + lon_padding,
+    ))
+
     geoplotlib.set_window_size(1280, 850)
     geoplotlib.tiles_provider({
         "url": lambda zoom, xtile, ytile: (
@@ -94,26 +110,28 @@ def main():
         ),
         "tiles_dir": "esri_world_street_map",
         "attribution": (
-            "made with geoplotlib | Tiles &copy; Esri, HERE, Garmin, "
+            "made with geoplotlib | Tiles (c) Esri, HERE, Garmin, "
             "(c) OpenStreetMap contributors, and the GIS user community"
         ),
     })
-    geoplotlib.hist(
+
+    geoplotlib.kde(
         density_data,
-        cmap="hot",
-        binsize=8,
-        alpha=210,
+        bw=2,
+        cut_below=5,
+        cmap="viridis",
+        method="hist",
+        scaling="sqrt",
+        binsize=3,
+        alpha=120,
         show_colorbar=True,
     )
     geoplotlib.graph(
         route_data,
-        "src_lat",
-        "src_lon",
-        "dest_lat",
-        "dest_lon",
+        "src_lat", "src_lon", "dest_lat", "dest_lon",
         linewidth=1,
-        alpha=70,
-        color="winter",
+        alpha=150,
+        color="hot"
     )
 
     if args.save:

@@ -4,8 +4,8 @@ Visualize shared-bike trip data from `cabi_bike.csv` with geoplotlib.
 
 The script creates two layers:
 
-- A 2D density histogram of trip start locations
-- Sampled routes from start points to end points
+- A kernel density estimate (KDE) of trip start locations
+- Sampled routes from start points to end points, rendered with a low-opacity warm color scale
 
 The project uses Esri World Street Map tiles. It does not use CartoDB or Stamen services that require an API key, and it does not directly use the public OpenStreetMap tile server.
 
