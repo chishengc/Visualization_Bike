@@ -126,8 +126,8 @@ def main():
 
     geoplotlib.kde(
         density_data,
-        bw=2,
-        cut_below=5,
+        bw=3,
+        cut_below=8,
         cmap="viridis",
         method="hist",
         scaling="sqrt",
@@ -139,7 +139,7 @@ def main():
         route_data,
         "src_lat", "src_lon", "dest_lat", "dest_lon",
         linewidth=1,
-        alpha=150,
+        alpha=100,
         color="hot",
     )
 
