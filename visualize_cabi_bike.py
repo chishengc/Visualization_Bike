@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 
-def load_trips(csv_path, sample_every):
+def load_trips(csv_path, sample_every, seed=None):
     start_lat = []
     start_lon = []
     graph_start_lat = []
@@ -13,6 +13,8 @@ def load_trips(csv_path, sample_every):
     graph_end_lat = []
     graph_end_lon = []
     member_type = []
+    rng = np.random.default_rng(seed)
+    sample_probability = 1 / sample_every
 
     with csv_path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
@@ -27,7 +29,7 @@ def load_trips(csv_path, sample_every):
         if missing:
             raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
 
-        for row_number, row in enumerate(reader):
+        for row in reader:
             try:
                 current_start_lat = float(row["start_lat"])
                 current_start_lon = float(row["start_lng"])
@@ -39,7 +41,7 @@ def load_trips(csv_path, sample_every):
             start_lat.append(current_start_lat)
             start_lon.append(current_start_lon)
             member_type.append(row["member_casual"])
-            if row_number % sample_every == 0:
+            if rng.random() < sample_probability:
                 graph_start_lat.append(current_start_lat)
                 graph_start_lon.append(current_start_lon)
                 graph_end_lat.append(current_end_lat)
@@ -60,6 +62,7 @@ def main():
     parser = argparse.ArgumentParser(description="Visualize CABI bike trips with geoplotlib")
     parser.add_argument("csv_path", nargs="?", type=Path, default=Path("cabi_bike.csv"))
     parser.add_argument("--sample-every", type=int, default=250)
+    parser.add_argument("--seed", type=int, help="Seed for reproducible random route sampling")
     parser.add_argument("--save", type=Path, help="Save a PNG instead of opening the map window")
     args = parser.parse_args()
 
@@ -73,7 +76,7 @@ def main():
     import geoplotlib
     from geoplotlib.utils import BoundingBox, DataAccessObject
 
-    loaded = load_trips(args.csv_path, args.sample_every)
+    loaded = load_trips(args.csv_path, args.sample_every, args.seed)
     density_data = DataAccessObject({
         "lat": loaded["lat"],
         "lon": loaded["lon"],
