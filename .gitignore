@@ -24,3 +24,5 @@ geoplotlib_tiles/
 
 *.geojson
 *.json
+
+.github/*
