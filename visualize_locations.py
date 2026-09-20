@@ -36,13 +36,24 @@ def coordinates(points):
     )
 
 
-def visualize_locations(geoplotlib, points, point_size=4.0):
-    from geoplotlib.utils import DataAccessObject
+def visualize_locations(geoplotlib, points, point_size=2.0):
+    from geoplotlib.core import BatchPainter
+    from geoplotlib.layers import BaseLayer
+    from geoplotlib.utils import BoundingBox
 
-    station_data = DataAccessObject({
-        "lat": [point["lat"] for point in points],
-        "lon": [point["lon"] for point in points],
-        "name": [point["name"] for point in points],
-        "bikes": [point["bikes"] for point in points],
-    })
-    geoplotlib.dot(station_data, color="red", point_size=point_size)
+    class LocationLayer(BaseLayer):
+        def invalidate(self, proj):
+            self.painter = BatchPainter()
+            lat, lon = coordinates(points)
+            x, y = proj.lonlat_to_screen(lon, lat)
+            self.painter.set_color("red")
+            self.painter.points(x, y, 2 * point_size, rounded=True)
+
+        def draw(self, proj, mouse_x, mouse_y, ui_manager):
+            self.painter.batch_draw()
+
+        def bbox(self):
+            lat, lon = coordinates(points)
+            return BoundingBox.from_points(lons=lon, lats=lat)
+
+    geoplotlib.add_layer(LocationLayer())
