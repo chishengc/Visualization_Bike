@@ -4,8 +4,10 @@ from pathlib import Path
 
 import numpy as np
 
+from visualize_locations import coordinates, load_geojson_points, visualize_locations
 
-def load_trips(csv_path, sample_every, seed=None):
+
+def load_trips(csv_path, sample_every=250, seed=None):
     start_lat = []
     start_lon = []
     graph_start_lat = []
@@ -14,17 +16,11 @@ def load_trips(csv_path, sample_every, seed=None):
     graph_end_lon = []
     member_type = []
     rng = np.random.default_rng(seed)
-    sample_probability = 1 / sample_every
+    sample_probability = 1 / max(sample_every, 1)
 
     with csv_path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
-        required = {
-            "start_lat",
-            "start_lng",
-            "end_lat",
-            "end_lng",
-            "member_casual",
-        }
+        required = {"start_lat", "start_lng", "end_lat", "end_lng", "member_casual"}
         missing = required - set(reader.fieldnames or [])
         if missing:
             raise ValueError(f"Missing required columns: {', '.join(sorted(missing))}")
@@ -48,22 +44,24 @@ def load_trips(csv_path, sample_every, seed=None):
                 graph_end_lon.append(current_end_lon)
 
     return {
-        "lat": np.asarray(start_lat),
-        "lon": np.asarray(start_lon),
-        "src_lat": np.asarray(graph_start_lat),
-        "src_lon": np.asarray(graph_start_lon),
-        "dest_lat": np.asarray(graph_end_lat),
-        "dest_lon": np.asarray(graph_end_lon),
+        "lat": np.asarray(start_lat, dtype=float),
+        "lon": np.asarray(start_lon, dtype=float),
+        "src_lat": np.asarray(graph_start_lat, dtype=float),
+        "src_lon": np.asarray(graph_start_lon, dtype=float),
+        "dest_lat": np.asarray(graph_end_lat, dtype=float),
+        "dest_lon": np.asarray(graph_end_lon, dtype=float),
         "member_casual": np.asarray(member_type),
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Visualize CABI bike trips with geoplotlib")
+    parser = argparse.ArgumentParser(description="Visualize Capital Bike trip density and optional station locations")
     parser.add_argument("csv_path", nargs="?", type=Path, default=Path("cabi_bike.csv"))
+    parser.add_argument("--geojson", type=Path, default=Path("Capital_Bike_Share_Locations.geojson"), help="GeoJSON station file")
     parser.add_argument("--sample-every", type=int, default=250)
     parser.add_argument("--seed", type=int, help="Seed for reproducible random route sampling")
     parser.add_argument("--save", type=Path, help="Save a PNG instead of opening the map window")
+    parser.add_argument("--no-locations", dest="show_locations", action="store_false", default=True, help="Hide station locations")
     args = parser.parse_args()
 
     if args.sample_every < 1:
@@ -91,6 +89,14 @@ def main():
 
     all_lats = np.concatenate((loaded["lat"], loaded["src_lat"], loaded["dest_lat"]))
     all_lons = np.concatenate((loaded["lon"], loaded["src_lon"], loaded["dest_lon"]))
+
+    if args.show_locations:
+        if not args.geojson.exists():
+            parser.error(f"GeoJSON file not found: {args.geojson}")
+        location_points = load_geojson_points(args.geojson)
+        loc_lat, loc_lon = coordinates(location_points)
+        all_lats = np.concatenate((all_lats, loc_lat))
+        all_lons = np.concatenate((all_lons, loc_lon))
 
     lat_min, lat_max = np.percentile(all_lats, [1, 99])
     lon_min, lon_max = np.percentile(all_lons, [1, 99])
@@ -134,8 +140,11 @@ def main():
         "src_lat", "src_lon", "dest_lat", "dest_lon",
         linewidth=1,
         alpha=150,
-        color="hot"
+        color="hot",
     )
+
+    if args.show_locations:
+        visualize_locations(geoplotlib, location_points)
 
     if args.save:
         output_path = args.save.with_suffix("") if args.save.suffix.lower() == ".png" else args.save
