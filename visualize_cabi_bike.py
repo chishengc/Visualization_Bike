@@ -4,8 +4,6 @@ from pathlib import Path
 
 import numpy as np
 
-from visualize_locations import coordinates, load_geojson_points, visualize_locations
-
 
 def load_trips(csv_path, sample_every=250, seed=None):
     start_lat = []
@@ -55,13 +53,11 @@ def load_trips(csv_path, sample_every=250, seed=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Visualize Capital Bike trip density and optional station locations")
+    parser = argparse.ArgumentParser(description="Visualize Capital Bike trip density and routes")
     parser.add_argument("csv_path", nargs="?", type=Path, default=Path("cabi_bike.csv"))
-    parser.add_argument("--geojson", type=Path, default=Path("Capital_Bike_Share_Locations.geojson"), help="GeoJSON station file")
     parser.add_argument("--sample-every", type=int, default=250)
     parser.add_argument("--seed", type=int, help="Seed for reproducible random route sampling")
     parser.add_argument("--save", type=Path, help="Save a PNG instead of opening the map window")
-    parser.add_argument("--no-locations", dest="show_locations", action="store_false", default=True, help="Hide station locations")
     args = parser.parse_args()
 
     if args.sample_every < 1:
@@ -89,14 +85,6 @@ def main():
 
     all_lats = np.concatenate((loaded["lat"], loaded["src_lat"], loaded["dest_lat"]))
     all_lons = np.concatenate((loaded["lon"], loaded["src_lon"], loaded["dest_lon"]))
-
-    if args.show_locations:
-        if not args.geojson.exists():
-            parser.error(f"GeoJSON file not found: {args.geojson}")
-        location_points = load_geojson_points(args.geojson)
-        loc_lat, loc_lon = coordinates(location_points)
-        all_lats = np.concatenate((all_lats, loc_lat))
-        all_lons = np.concatenate((all_lons, loc_lon))
 
     lat_min, lat_max = np.percentile(all_lats, [1, 99])
     lon_min, lon_max = np.percentile(all_lons, [1, 99])
@@ -142,9 +130,6 @@ def main():
         alpha=100,
         color="hot",
     )
-
-    if args.show_locations:
-        visualize_locations(geoplotlib, location_points)
 
     if args.save:
         output_path = args.save.with_suffix("") if args.save.suffix.lower() == ".png" else args.save
